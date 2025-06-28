@@ -102,8 +102,8 @@ jobs:
     - name: Upload Build Log
       uses: actions/upload-artifact@v4
       with:
-        name: log
-        path: t.txt
+        name: modules.order
+        path: out/common/modules.order
 
     - name: Create summary
       run: |
@@ -117,4 +117,4 @@ jobs:
         echo "- DTB" >> $GITHUB_STEP_SUMMARY
         echo "- DTBO" >> $GITHUB_STEP_SUMMARY
         echo "- Модули" >> $GITHUB_STEP_SUMMARY
-        echo "- Лог сборки" >> $GITHUB_STEP_SUMMARY
+        echo "- modules.order" >> $GITHUB_STEP_SUMMARY
