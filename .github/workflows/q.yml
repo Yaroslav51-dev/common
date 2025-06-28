@@ -1,0 +1,120 @@
+name: build-kernel-with-modules
+on:
+  push:
+    branches: 
+      - main
+  workflow_dispatch:
+
+jobs:
+  build4:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository with full history
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 50
+
+    - name: Determine triggering commits
+      id: get_commits
+      run: |
+        if [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
+          echo "COMMITS=Initial commit to branch" >> $GITHUB_ENV
+          echo "SHORT_LOG=Initial commit" >> $GITHUB_ENV
+        else
+          COMMITS=$(git log --pretty=format:"%h - %s (%an)" ${{ github.event.before }}..${{ github.event.after }})
+          if [ -z "$COMMITS" ]; then
+            COMMITS="Force-push detected"
+          fi
+          echo "COMMITS=$COMMITS" >> $GITHUB_ENV
+          SHORT_LOG=$(echo "$COMMITS" | head -3)
+          [ $(echo "$COMMITS" | wc -l) -gt 3 ] && SHORT_LOG="$SHORT_LOG\n..."
+          echo "SHORT_LOG=$SHORT_LOG" >> $GITHUB_ENV
+        fi
+
+    - name: Show triggering commits
+      run: |
+        echo "Коммиты, вызвавшие сборку:"
+        echo "${{ env.COMMITS }}"
+
+    - name: Set up JDK 11
+      uses: actions/setup-java@v3
+      with:
+        java-version: 11
+        distribution: 'temurin'
+        
+    - name: Maximize build space
+      uses: easimon/maximize-build-space@master
+      with:
+          root-reserve-mb: 8192
+          temp-reserve-mb: 2048
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+
+    - name: "Setup build environment"
+      run: |             
+             curl https://raw.githubusercontent.com/akhilnarang/scripts/master/setup/android_build_env.sh | bash -
+             curl -LO https://github.com/ccache/ccache/releases/download/v4.10.1/ccache-4.10.1-linux-x86_64.tar.xz
+             tar -xf ccache-4.10.1-linux-x86_64.tar.xz
+             cd ccache-4.10.1-linux-x86_64
+             sudo make install
+             export CCACHE_DIR=~/.ccache && ccache -M 8Gi
+             export USE_CCACHE=1
+             export CONFIG_CCACHE=y
+             cd ..
+             
+    - name: "Clone repo, sync"
+      run: |
+             mkdir out
+             repo init -u https://github.com/Yaroslav51-dev/manifest.git -b main --depth=1
+             repo sync -c --no-tags --no-clone-bundle
+
+    - name: "Build"
+      run: |             
+             OUT_DIR=out LTO=thin BUILD_CONFIG=common/siberia.gki.aarch64 build/build.sh MAKE_ARGS="-k -i"
+             find . -type f > t.txt
+
+    - name: Upload Image
+      uses: actions/upload-artifact@v4
+      with:
+        name: image
+        path: out/dist/Image
+
+    - name: Upload DTB
+      uses: actions/upload-artifact@v4
+      with:
+        name: dtb
+        path: out/dist/*.dtb
+
+    - name: Upload DTBO
+      uses: actions/upload-artifact@v4
+      with:
+        name: dtbo
+        path: out/dist/dtbo.img
+          
+    - name: Upload Modules
+      uses: actions/upload-artifact@v4
+      with:
+        name: modules
+        path: out/dist/*.ko    
+
+    - name: Upload Build Log
+      uses: actions/upload-artifact@v4
+      with:
+        name: log
+        path: t.txt
+
+    - name: Create summary
+      run: |
+        echo "### 🛠 Сборка ядра завершена" >> $GITHUB_STEP_SUMMARY
+        echo "**Триггерные коммиты:**" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        echo "${{ env.SHORT_LOG }}" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        echo "**Артефакты:**" >> $GITHUB_STEP_SUMMARY
+        echo "- Image" >> $GITHUB_STEP_SUMMARY
+        echo "- DTB" >> $GITHUB_STEP_SUMMARY
+        echo "- DTBO" >> $GITHUB_STEP_SUMMARY
+        echo "- Модули" >> $GITHUB_STEP_SUMMARY
+        echo "- Лог сборки" >> $GITHUB_STEP_SUMMARY
