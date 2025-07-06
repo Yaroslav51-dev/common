@@ -72,8 +72,18 @@ jobs:
 
     - name: "Build"
       run: |             
-             OUT_DIR=out LTO=thin BUILD_CONFIG=common/siberia.gki.aarch64 build/build.sh MAKE_ARGS="-k -i"
+             LTO=thin BUILD_CONFIG=common/siberia.gki.aarch64 build.sh -t -c && mv aospa-gki-marble-*.zip aospa-gki-kernel.zip"
              find . -type f > t.txt
+    - name: Generate release tag
+      id: tag
+      run: echo "::set-output name=release_tag::AOSPA_STOCK_GKI_$(date +"%Y.%m.%d")"
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+          tag_name: ${{ steps.tag.outputs.release_tag }}
+          files: /home/runner/work/common/common/aospa-gki-kernel.zip
+      env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Upload Image
       uses: actions/upload-artifact@v4
