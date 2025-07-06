@@ -72,7 +72,7 @@ jobs:
 
     - name: "Build"
       run: |             
-             LTO=thin BUILD_CONFIG=common/siberia.gki.aarch64 build.sh -t -c && mv aospa-gki-marble-*.zip aospa-gki-kernel.zip"
+             LTO=thin BUILD_CONFIG=common/siberia.gki.aarch64 build.sh -t -c && mv aospa-gki-marble-*.zip aospa-gki-kernel.zip
              find . -type f > t.txt
     - name: Generate release tag
       id: tag
