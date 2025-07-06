@@ -5,7 +5,6 @@
 
 ccflags-$(CONFIG_MI_HARDWARE_ID) += -I$(srctree)/drivers/misc/hwid/
 obj-y 							+= mi-ioturbo/
-obj-$(CONFIG_GPIO_TESTING_MODE) += gpio-testing-mode.o
 obj-y				+= hwid/
 obj-$(CONFIG_PERF_HELPER)       += perf_helper.o
 obj-$(CONFIG_MI_GAMEKEY)        += mi_gamekey/
